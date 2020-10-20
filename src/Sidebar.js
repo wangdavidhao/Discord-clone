@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useEffect , useState} from 'react'
 import './Sidebar.css';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import AddIcon from '@material-ui/icons/Add';   
+import AddIcon from '@material-ui/icons/Add';  
 import SidebarChannel from './SidebarChannel';
 import SignalCellularAltIcon from '@material-ui/icons/SignalCellularAlt';
 import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined';
@@ -10,8 +10,39 @@ import MicIcon from '@material-ui/icons/Mic';
 import HeadsetIcon from '@material-ui/icons/Headset';
 import SettingsIcon from '@material-ui/icons/Settings';
 import { Avatar } from '@material-ui/core';
+import { useSelector } from 'react-redux';
+import { selectUser } from './features/userSlice';
+import db, {auth} from './firebase';
 
 function Sidebar() {
+
+    const user = useSelector(selectUser);
+
+    const [channels, setChannels] = useState([]);
+
+    //Chaque refresh est appelé une fois et à chaque changement/action si un changement dans channels (snapshot) on maj le state channels, setChannels
+    //id du doc et data (destructure apres), ici une seule data : channelName
+    useEffect(() => {
+        db.collection('channels').onSnapshot(snapshot => (
+            setChannels(snapshot.docs.map(doc => ({
+                id:doc.id,
+                channel:doc.data(),
+            })))
+        ))
+    }, []);
+
+
+    //Si clique sur ajouter channel on ajoute dans la collection channels
+    const handleAddChannel = () => {
+        const channelName = prompt("Enter a new channel name : ");
+
+        //Le premier nom de l'attribut ds firebase le 2eme celui qu'on passe en param
+        if(channelName){
+            db.collection('channels').add({
+                channelName:channelName,
+            })
+        }
+    }
     return (
         <div className="sidebar">
 
@@ -26,13 +57,15 @@ function Sidebar() {
                         <ExpandMoreIcon></ExpandMoreIcon>
                         <h4>Text channels</h4>
                     </div>
-                    <AddIcon className="sidebar__addChannel"></AddIcon>
+                    <AddIcon onClick={handleAddChannel} className="sidebar__addChannel"></AddIcon>
                 </div>
                 <div className="sidebar__channelsList">
-                    <SidebarChannel/>
-                    <SidebarChannel/>
-                    <SidebarChannel/>
-                    <SidebarChannel/>
+
+                    {channels.map(({id, channel} )=> (
+                        <SidebarChannel key={id} id={id} channelName={channel.channelName}/>   
+                    ))}
+                    {/*channelNam et channelName dans firebase*/}
+
                 </div>
             </div>
 
@@ -51,10 +84,10 @@ function Sidebar() {
             </div>
 
             <div className="sidebar__profile">
-                <Avatar></Avatar>
+                <Avatar src={user.photo} onClick={() => auth.signOut()}></Avatar>
                 <div className="sidebar__profileInfo">
-                    <h3>wangdav_id</h3>
-                    <p>#GYJY68GY</p>
+                    <h3>{user.displayName}</h3>
+                    <p>#{user.uid.substring(0,6)}</p>
                 </div>
 
                 <div className="sidebar__profileIcons">
